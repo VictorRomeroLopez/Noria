@@ -3,6 +3,7 @@ in vec3 in_Position;
 in vec3 in_Normal;
 uniform vec3 lPos;
 out vec4 vert_Normal;
+out vec3 lightPos;
 uniform mat4 objMat;
 uniform mat4 mv_Mat;
 uniform mat4 mvpMat;

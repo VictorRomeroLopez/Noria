@@ -1,9 +1,23 @@
 #version 330
 in vec4 vert_Normal;
 out vec4 out_Color;
+uniform vec3 lPos;
 uniform mat4 mv_Mat;
-uniform vec4 color;
+vec3 baseColor = vec3(1,1,1);
+
+vec3 lightColor = vec3(0,0,1);
+
+float ambientStrenght = 0.1f;
+vec3 ambientColor = vec3(0,0,1);
 
 void main() {
-	out_Color = vec4(color.xyz * dot(vert_Normal, vec4(1.0, 1.0, 0.0, 0.0)) , 1.0 );
+	vec3 ambient = ambientColor.rgb * ambientStrenght;
+
+	vec3 normal = normalize(vert_Normal.xyz);
+	vec3 lightDir = normalize(lPos.xyz);
+	float diff = max(dot(normal, lightDir), 0.0);
+	vec3 diffuse = diff * lightColor;
+
+	vec3 result = (ambient + diffuse) * baseColor;
+	out_Color = vec4(result , 1.0);
 }
