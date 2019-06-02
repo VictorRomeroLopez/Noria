@@ -20,10 +20,13 @@ glm::vec3 offsetTrump = glm::vec3(-1.4f, 1.5f, 0.5f);
 glm::vec3 offsetChicken = glm::vec3(1.3, 0.8f, -0.5f);
 float timer = 0;
 bool shootcountershoot = false;
+bool enableShootCounteshoot = true;
+bool scene1 = false;
 
 #pragma region VARIABLES_SHADERS
 std::ifstream file;
 std::string vertexShaderString;
+std::string vertexShaderStringChicken;
 std::string fragShaderString;
 #pragma endregion
 #pragma region VARIABLES_CABINA
@@ -51,6 +54,12 @@ glm::vec3 chickenPosition = glm::vec3(1.66f, 2.39f, 0.04f);
 float chickenScale = 0.01f;
 glm::vec3 chickenRotation = glm::vec3(0,-90,0);
 #pragma endregion
+#pragma region VARIABLES_CHICKEN_ARMY
+glm::vec3 chickenArmyPosition = glm::vec3(-640, -400, -10);
+float chickenArmyScale = 0.1f;
+glm::vec3 chickenArmyRotation = glm::vec3(0,0,0);
+float chickenArmyOffset = 60;
+#pragma endregion
 #pragma region VARIABLES_PENDULUM
 glm::vec3 pendulumPosition = glm::vec3(0, 4, 0);
 float pendulumScale = 0.15;
@@ -59,7 +68,6 @@ float pendulumLenght = -6.7f;
 float pendulumPower = 60;
 float pendulumSpeed = 2;
 #pragma endregion
-
 #pragma region VARIABLES_NORIA
 int numberCabines = 20;
 float radius = 33.2f;
@@ -130,9 +138,24 @@ namespace Chicken {
 	void cleanupModel();
 	void drawModel(glm::vec3, float, glm::vec3);
 }
+
+namespace ChickenArmy {
+	const char* model_vertShader;
+	const char* model_fragShader;
+	void setupModel();
+	void cleanupModel();
+	void drawModel(glm::vec3, float, glm::vec3);
+}
 #pragma endregion
 
 void reloadShaders() {
+
+	file.open("shaders/vertexShaderChicken.txt");
+	vertexShaderStringChicken = std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+	ChickenArmy::model_vertShader = &vertexShaderStringChicken[0];
+
+	file.close();
+
 #pragma region VERTEX_SHADER
 	file.open("shaders/vertexShader.txt");
 	vertexShaderString = std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
@@ -140,8 +163,8 @@ void reloadShaders() {
 	Wheel::model_vertShader = &vertexShaderString[0];
 	Cube::cube_vertShader = &vertexShaderString[0];
 	Legs::model_vertShader = &vertexShaderString[0];
-	Trump::model_vertShader = &vertexShaderString[0];
 	Chicken::model_vertShader = &vertexShaderString[0];
+	Trump::model_vertShader = &vertexShaderString[0];
 	Pendulum::cube_vertShader = &vertexShaderString[0];
 	file.close();
 #pragma endregion
@@ -154,6 +177,7 @@ void reloadShaders() {
 	Legs::model_fragShader = &fragShaderString[0];
 	Trump::model_fragShader = &fragShaderString[0];
 	Chicken::model_fragShader = &fragShaderString[0];
+	ChickenArmy::model_fragShader = &fragShaderString[0];
 	Pendulum::cube_fragShader = &fragShaderString[0];
 
 	file.close();
@@ -165,6 +189,7 @@ void reloadShaders() {
 	Legs::setupModel();
 	Trump::setupModel();
 	Chicken::setupModel();
+	ChickenArmy::setupModel();
 	Pendulum::setupCube();
 #pragma endregion
 }
@@ -188,60 +213,75 @@ void GUI() {
 			reloadShaders();
 			printf("Shaders reloadeds");
 		}
-
-		ImGui::DragFloat3("Light Pos", &actualLightPos.x, 0.1f);
-		ImGui::DragFloat3("offset Trump", &offsetTrump[0], 0.1f);
-		ImGui::DragFloat3("offset Chicken", &offsetChicken[0], 0.1f);
-		if (ImGui::TreeNode("Cabine")) {
-			ImGui::DragFloat3("Position", &cabinePosition.x, 0.01f);
-			ImGui::DragFloat("Scale", &cabineScale, 0.01f);
-			ImGui::DragFloat3("Rotation", &cabineRotation.x, 0.1f);
-			ImGui::TreePop();
+		ImGui::Checkbox("Enable Shoot-Countershoot", &enableShootCounteshoot);
+		if(ImGui::Button("Scene1")){
+			scene1 = !scene1;
+			timer = 0;
+			shootcountershoot = false;
 		}
+		if (scene1) {
+			ImGui::DragFloat3("Light Pos", &actualLightPos.x, 0.1f);
+			ImGui::DragFloat3("offset Trump", &offsetTrump[0], 0.1f);
+			ImGui::DragFloat3("offset Chicken", &offsetChicken[0], 0.1f);
+			if (ImGui::TreeNode("Cabine")) {
+				ImGui::DragFloat3("Position", &cabinePosition.x, 0.01f);
+				ImGui::DragFloat("Scale", &cabineScale, 0.01f);
+				ImGui::DragFloat3("Rotation", &cabineRotation.x, 0.1f);
+				ImGui::TreePop();
+			}
 
-		if (ImGui::TreeNode("Wheel")) {
-			ImGui::DragFloat3("Position", &wheelPosition.x, 0.01f);
-			ImGui::DragFloat("Scale", &wheelScale, 0.01f);
-			ImGui::DragFloat3("Rotation", &wheelRotation.x, 0.1f);
-			ImGui::TreePop();
-		}
+			if (ImGui::TreeNode("Wheel")) {
+				ImGui::DragFloat3("Position", &wheelPosition.x, 0.01f);
+				ImGui::DragFloat("Scale", &wheelScale, 0.01f);
+				ImGui::DragFloat3("Rotation", &wheelRotation.x, 0.1f);
+				ImGui::TreePop();
+			}
 
-		if (ImGui::TreeNode("Legs")) {
-			ImGui::DragFloat3("Position", &legsPosition.x, 0.01f);
-			ImGui::DragFloat("Scale", &legsScale, 0.01f);
-			ImGui::DragFloat3("Rotation", &legsRotation.x, 0.1f);
-			ImGui::TreePop();
-		}
-		
-		if (ImGui::TreeNode("Trump")) {
-			ImGui::DragFloat3("Position", &trumpPosition.x, 0.01f);
-			ImGui::DragFloat("Scale", &trumpScale, 0.01f);
-			ImGui::DragFloat3("Rotation", &trumpRotation.x, 0.1f);
-			ImGui::TreePop();
-		}
+			if (ImGui::TreeNode("Legs")) {
+				ImGui::DragFloat3("Position", &legsPosition.x, 0.01f);
+				ImGui::DragFloat("Scale", &legsScale, 0.01f);
+				ImGui::DragFloat3("Rotation", &legsRotation.x, 0.1f);
+				ImGui::TreePop();
+			}
 
-		if (ImGui::TreeNode("Chicken")) {
-			ImGui::DragFloat3("Position", &chickenPosition.x, 0.01f);
-			ImGui::DragFloat("Scale", &chickenScale, 0.01f);
-			ImGui::DragFloat3("Rotation", &chickenRotation.x, 0.1f);
-			ImGui::TreePop();
-		}
+			if (ImGui::TreeNode("Trump")) {
+				ImGui::DragFloat3("Position", &trumpPosition.x, 0.01f);
+				ImGui::DragFloat("Scale", &trumpScale, 0.01f);
+				ImGui::DragFloat3("Rotation", &trumpRotation.x, 0.1f);
+				ImGui::TreePop();
+			}
 
-		if (ImGui::TreeNode("Pendulum")) {
-			ImGui::DragFloat3("Position", &pendulumPosition.x, 0.01f);
-			ImGui::DragFloat("Scale", &pendulumScale, 0.01f);
-			ImGui::DragFloat3("Rotation", &pendulumRotation.x, 0.1f);
-			ImGui::DragFloat("Lenght", &pendulumLenght, 0.1f);
-			ImGui::DragFloat("Pendulum power", &pendulumPower, 1.f);
-			ImGui::DragFloat("Pendulum speed", &pendulumSpeed, 0.1f);
-			ImGui::TreePop();
-		}
+			if (ImGui::TreeNode("Chicken")) {
+				ImGui::DragFloat3("Position", &chickenPosition.x, 0.01f);
+				ImGui::DragFloat("Scale", &chickenScale, 0.01f);
+				ImGui::DragFloat3("Rotation", &chickenRotation.x, 0.1f);
+				ImGui::TreePop();
+			}
 
-		if (ImGui::TreeNode("Noria")) {
-			ImGui::DragInt("NumberCabines", &numberCabines);
-			ImGui::DragFloat("Radius", &radius, 0.1f);
-			ImGui::DragFloat("Frequency", &frequency, 0.01f);
-			ImGui::TreePop();
+			if (ImGui::TreeNode("ChickenArmy")) {
+				ImGui::DragFloat3("Position", &chickenArmyPosition.x, 0.01f);
+				ImGui::DragFloat("Scale", &chickenArmyScale, 0.01f);
+				ImGui::DragFloat3("Rotation", &chickenArmyRotation.x, 0.1f);
+				ImGui::DragFloat("Offset", &chickenArmyOffset, 0.1f);
+				ImGui::TreePop();
+			}
+
+			if (ImGui::TreeNode("Pendulum")) {
+				ImGui::DragFloat3("Position", &pendulumPosition.x, 0.01f);
+				ImGui::DragFloat("Scale", &pendulumScale, 0.01f);
+				ImGui::DragFloat3("Rotation", &pendulumRotation.x, 0.1f);
+				ImGui::DragFloat("Lenght", &pendulumLenght, 0.1f);
+				ImGui::DragFloat("Pendulum power", &pendulumPower, 1.f);
+				ImGui::DragFloat("Pendulum speed", &pendulumSpeed, 0.1f);
+				ImGui::TreePop();
+			}
+
+			if (ImGui::TreeNode("Noria")) {
+				ImGui::DragInt("NumberCabines", &numberCabines);
+				ImGui::DragFloat("Radius", &radius, 0.1f);
+				ImGui::DragFloat("Frequency", &frequency, 0.01f);
+				ImGui::TreePop();
+			}
 		}
 	}
 	ImGui::End();
@@ -347,12 +387,14 @@ void Scene1(float dt) {
 		}
 	}
 
+	ChickenArmy::drawModel(chickenArmyPosition, chickenArmyScale, chickenArmyRotation);
+
 	pendulumRotation.z = glm::cos(currentTime * pendulumSpeed) * pendulumPower;
 	Pendulum::drawCube(pendulumPosition + firstCabinPosition, pendulumScale, pendulumRotation, glm::vec3(0, pendulumLenght, 0));
 
 	Chicken::drawModel(chickenPosition + firstCabinPosition, chickenScale, chickenRotation);
 	Trump::drawModel(trumpPosition + firstCabinPosition, trumpScale, trumpRotation);
-	if (shootcountershoot) {
+	if (shootcountershoot && enableShootCounteshoot) {
 		if (timer < 2.f)
 			RV::_modelView = glm::lookAt(trumpPosition + firstCabinPosition + offsetTrump, chickenPosition + firstCabinPosition, glm::vec3(0, 1, 0));
 		else if (timer < 4.f)
@@ -384,8 +426,8 @@ void GLrender(float dt) {
 	RV::_modelView = glm::translate(RV::_modelView, glm::vec3(RV::panv[0], RV::panv[1], RV::panv[2]));
 	RV::_modelView = glm::rotate(RV::_modelView, RV::rota[1], glm::vec3(1.f, 0.f, 0.f));
 	RV::_modelView = glm::rotate(RV::_modelView, RV::rota[0], glm::vec3(0.f, 1.f, 0.f));
-
-	Scene1(dt);
+	
+	if(scene1) Scene1(dt);
 
 	RV::_MVP = RV::_projection * RV::_modelView;
 
@@ -1088,6 +1130,89 @@ namespace Chicken {
 		glUniform4f(glGetUniformLocation(modelProgram, "color"), 0.5f, .5f, 1.f, 0.f);
 
 		glDrawArrays(GL_TRIANGLES, 0, nverts);
+
+
+		glUseProgram(0);
+		glBindVertexArray(0);
+
+	}
+}
+
+namespace ChickenArmy {
+	GLuint modelVao;
+	GLuint modelVbo[3];
+	GLuint modelShaders[2];
+	GLuint modelProgram;
+	glm::mat4 objMat = glm::mat4(1.f);
+	std::string modelPath = "models/Chicken.obj";
+	int nverts;
+
+	void setupModel() {
+		std::vector<glm::vec3> verts, norms;
+		std::vector<glm::vec2> uvs;
+
+		loadOBJ(&modelPath[0], verts, uvs, norms);
+		nverts = verts.size();
+
+		glGenVertexArrays(1, &modelVao);
+		glBindVertexArray(modelVao);
+		glGenBuffers(3, modelVbo);
+
+		glBindBuffer(GL_ARRAY_BUFFER, modelVbo[0]);
+		glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(glm::vec3), &verts[0], GL_STATIC_DRAW);
+		glVertexAttribPointer((GLuint)0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		glEnableVertexAttribArray(0);
+
+		glBindBuffer(GL_ARRAY_BUFFER, modelVbo[1]);
+		glBufferData(GL_ARRAY_BUFFER, norms.size() * sizeof(glm::vec3), &norms[0], GL_STATIC_DRAW);
+		glVertexAttribPointer((GLuint)1, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		glEnableVertexAttribArray(1);
+
+		glBindVertexArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+		modelShaders[0] = compileShader(model_vertShader, GL_VERTEX_SHADER, "cubeVert");
+		modelShaders[1] = compileShader(model_fragShader, GL_FRAGMENT_SHADER, "cubeFrag");
+
+		modelProgram = glCreateProgram();
+		glAttachShader(modelProgram, modelShaders[0]);
+		glAttachShader(modelProgram, modelShaders[1]);
+		glBindAttribLocation(modelProgram, 0, "in_Position");
+		glBindAttribLocation(modelProgram, 1, "in_Normal");
+		linkProgram(modelProgram);
+	}
+
+	void cleanupModel() {
+
+		glDeleteBuffers(2, modelVbo);
+		glDeleteVertexArrays(1, &modelVao);
+
+		glDeleteProgram(modelProgram);
+		glDeleteShader(modelShaders[0]);
+		glDeleteShader(modelShaders[1]);
+	}
+
+	void drawModel(glm::vec3 position, float scaleObject, glm::vec3 rotation) {
+
+		glm::mat4 translate = glm::translate(glm::mat4(1), position);
+		glm::mat4 scale = glm::scale(glm::mat4(1), glm::vec3(scaleObject, scaleObject, scaleObject));
+		glm::mat4 rotatex = glm::rotate(glm::mat4(1), glm::radians(rotation.x), glm::vec3(1, 0, 0));
+		glm::mat4 rotatey = glm::rotate(glm::mat4(1), glm::radians(rotation.y), glm::vec3(0, 1, 0));
+		glm::mat4 rotatez = glm::rotate(glm::mat4(1), glm::radians(rotation.z), glm::vec3(0, 0, 1));
+
+		objMat = translate * rotatex * rotatey * rotatez * scale;
+
+		glBindVertexArray(modelVao);
+		glUseProgram(modelProgram);
+		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
+		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
+		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
+		glUniform3f(glGetUniformLocation(modelProgram, "lPos"), lightPos.x, lightPos.y, lightPos.z);
+		glUniform1f(glGetUniformLocation(modelProgram, "chickenOffset"), chickenArmyOffset);
+		glUniform4f(glGetUniformLocation(modelProgram, "color"), 0.5f, .5f, 1.f, 0.f);
+
+		glDrawArraysInstanced(GL_TRIANGLES, 0, nverts, 10000);
 
 
 		glUseProgram(0);

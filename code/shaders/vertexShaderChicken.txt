@@ -1,0 +1,15 @@
+#version 330
+in vec3 in_Position;
+in vec3 in_Normal;
+uniform vec3 lPos;
+out vec4 vert_Normal;
+out vec3 lightPos;
+uniform mat4 objMat;
+uniform mat4 mv_Mat;
+uniform mat4 mvpMat;
+uniform float chickenOffset;
+
+void main() {
+  gl_Position = mvpMat * objMat * vec4(in_Position.x + ((gl_InstanceID % 100) * chickenOffset), in_Position.y + ((gl_InstanceID / 100) * chickenOffset), in_Position.z, 1.0);
+  vert_Normal = mv_Mat * objMat * vec4(in_Normal, 0.0);
+}
