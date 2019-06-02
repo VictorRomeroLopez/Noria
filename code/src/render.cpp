@@ -28,6 +28,8 @@ std::ifstream file;
 std::string vertexShaderString;
 std::string vertexShaderStringChicken;
 std::string fragShaderString;
+std::string fragShaderStringPendulum;
+std::string fragShaderStringCube;
 #pragma endregion
 #pragma region VARIABLES_CABINA
 glm::vec3 cabinePosition = glm::vec3();
@@ -35,7 +37,7 @@ float cabineScale= 1.f;
 glm::vec3 cabineRotation = glm::vec3();
 #pragma endregion
 #pragma region VARIABLES_WHEEL
-glm::vec3 wheelPosition = glm::vec3(0, 4.1f, 0);
+glm::vec3 wheelPosition = glm::vec3(0, -4.1f, 0);
 float wheelScale = 1.f;
 glm::vec3 wheelRotation = glm::vec3();
 #pragma endregion
@@ -182,6 +184,20 @@ void reloadShaders() {
 
 	file.close();
 #pragma endregion
+
+#pragma region FRAGMENT_SHADER_CUBE
+	file.open("shaders/fragShaderStringCube.txt");
+	fragShaderStringCube = std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+	Cube::cube_fragShader = &fragShaderStringCube[0];
+	file.close();
+#pragma endregion
+#pragma region FRAGMENT_SHADER_PENDULUM
+	file.open("shaders/fragShaderStringPendulum.txt");
+	fragShaderStringPendulum = std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+	Pendulum::cube_fragShader = &fragShaderStringPendulum[0];
+	file.close();
+#pragma endregion
+
 #pragma region SETUP_MODEL
 	Cabina::setupModel();
 	Wheel::setupModel();
@@ -1211,6 +1227,8 @@ namespace ChickenArmy {
 		glUniform3f(glGetUniformLocation(modelProgram, "lPos"), lightPos.x, lightPos.y, lightPos.z);
 		glUniform1f(glGetUniformLocation(modelProgram, "chickenOffset"), chickenArmyOffset);
 		glUniform4f(glGetUniformLocation(modelProgram, "color"), 0.5f, .5f, 1.f, 0.f);
+
+		
 
 		glDrawArraysInstanced(GL_TRIANGLES, 0, nverts, 10000);
 
