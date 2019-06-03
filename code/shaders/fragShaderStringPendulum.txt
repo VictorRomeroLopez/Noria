@@ -7,26 +7,17 @@ vec3 baseColor = vec3(1,1,1);
 
 vec3 lightColor = vec3(1,1,0);
 
-float ambientPower = 20f;
-float diffusePower = 20f;
-float specularPower = 20f;
-float quadratic = 0.032f;
-float constant = 1;
-float linear = 0.09f;
+float ambientStrenght = 0.1f;
 vec3 ambientColor = vec3(1,1,0);
-vec3 specularColor = vec3(1,1,0);
 
 void main() {
-	vec4 lightPos2 = mv_Mat * vec4( lPos, 0.0 );
-	vec3 ambient = ambientPower * lightColor;
-	vec4 lightDir = vec4(normalize(lightPos2.xyz - 0), 0.0);
-	float diff = max(dot(vert_Normal, lightDir), 0.0);
-	vec3 diffuse = diff * lightColor * diffusePower;
-	vec4 v = vec4(normalize(lPos - 0), 0.0);
-	vec4 r = reflect(lightDir, vert_Normal);
-	float spec = pow(max(dot(v,r), 0.0), 32);
-	vec3 specular = 20 * spec * lightColor * specularPower;
-	vec3 result = (ambient + diffuse + specular) * baseColor.xyz;
+	vec3 ambient = ambientColor.rgb * ambientStrenght;
 
-	out_Color = vec4(result, 1.0 );
+	vec3 normal = normalize(vert_Normal.xyz);
+	vec3 lightDir = normalize(lPos.xyz);
+	float diff = max(dot(normal, lightDir), 0.0);
+	vec3 diffuse = diff * lightColor;
+
+	vec3 result = (ambient + diffuse) * baseColor;
+	out_Color = vec4(result, 1.0);
 }

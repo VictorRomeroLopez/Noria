@@ -13,7 +13,7 @@
 #include <imgui\imgui_impl_sdl_gl3.h>
 
 glm::vec3 lightPos;
-glm::vec3 actualLightPos{ 10,30,0 };
+glm::vec3 actualLightPos{ 21,0,0 };
 float currentTime = 0;
 glm::vec3 firstCabinPosition = glm::vec3();
 glm::vec3 offsetTrump = glm::vec3(-1.4f, 1.5f, 0.5f);
@@ -22,7 +22,8 @@ float timer = 0;
 bool shootcountershoot = false;
 bool enableShootCounteshoot = true;
 bool scene1 = false;
-
+float intensityMoon = 1;
+float intensityBulb = 1;
 #pragma region VARIABLES_SHADERS
 std::ifstream file;
 std::string vertexShaderString;
@@ -37,7 +38,7 @@ float cabineScale= 1.f;
 glm::vec3 cabineRotation = glm::vec3();
 #pragma endregion
 #pragma region VARIABLES_WHEEL
-glm::vec3 wheelPosition = glm::vec3(0, -4.1f, 0);
+glm::vec3 wheelPosition = glm::vec3(0, 0, 0);
 float wheelScale = 1.f;
 glm::vec3 wheelRotation = glm::vec3();
 #pragma endregion
@@ -236,9 +237,11 @@ void GUI() {
 			shootcountershoot = false;
 		}
 		if (scene1) {
-			ImGui::DragFloat3("Light Pos", &actualLightPos.x, 0.1f);
+			ImGui::DragFloat3("Moon Position", &actualLightPos.x, 0.1f);
 			ImGui::DragFloat3("offset Trump", &offsetTrump[0], 0.1f);
 			ImGui::DragFloat3("offset Chicken", &offsetChicken[0], 0.1f);
+			ImGui::DragFloat("Moon Power", &intensityMoon, 0.01f, 0, 1);
+			ImGui::DragFloat("Bulb Power", &intensityBulb, 0.01f, 0 , 1);
 			if (ImGui::TreeNode("Cabine")) {
 				ImGui::DragFloat3("Position", &cabinePosition.x, 0.01f);
 				ImGui::DragFloat("Scale", &cabineScale, 0.01f);
@@ -386,15 +389,15 @@ void GLcleanup() {
 void Scene1(float dt) {
 	lightPos = actualLightPos * glm::mat3(RV::_modelView);
 
-	Cube::drawCube(lightPos, 1, glm::vec3(1, 1, 1));
 
 	wheelRotation.z = 2 * 3.14159f * frequency * currentTime;
 	Wheel::drawModel(wheelPosition, wheelScale, wheelRotation);
-
+	ChickenArmy::drawModel(chickenArmyPosition, chickenArmyScale, chickenArmyRotation);
 
 	Legs::drawModel(legsPosition, legsScale, legsRotation);
 
-	for (int i = 0; i < numberCabines; i++) {
+
+	for (int i = 20; i != -1; i--) {
 		float x = radius * cos((2 * 3.14159f * frequency * currentTime) + ((2 * 3.14159f * i) / numberCabines));
 		float y = radius * sin((2 * 3.14159f * frequency * currentTime) + ((2 * 3.14159f * i)) / numberCabines);
 		Cabina::drawModel(glm::vec3(x, y, 0) + cabinePosition, cabineScale, cabineRotation);
@@ -403,13 +406,13 @@ void Scene1(float dt) {
 		}
 	}
 
-	ChickenArmy::drawModel(chickenArmyPosition, chickenArmyScale, chickenArmyRotation);
 
 	pendulumRotation.z = glm::cos(currentTime * pendulumSpeed) * pendulumPower;
+	Cube::drawCube(lightPos, 1, glm::vec3(1, 1, 1));
 	Pendulum::drawCube(pendulumPosition + firstCabinPosition, pendulumScale, pendulumRotation, glm::vec3(0, pendulumLenght, 0));
 
-	Chicken::drawModel(chickenPosition + firstCabinPosition, chickenScale, chickenRotation);
 	Trump::drawModel(trumpPosition + firstCabinPosition, trumpScale, trumpRotation);
+	Chicken::drawModel(chickenPosition + firstCabinPosition, chickenScale, chickenRotation);
 	if (shootcountershoot && enableShootCounteshoot) {
 		if (timer < 2.f)
 			RV::_modelView = glm::lookAt(trumpPosition + firstCabinPosition + offsetTrump, chickenPosition + firstCabinPosition, glm::vec3(0, 1, 0));
@@ -726,12 +729,13 @@ namespace Pendulum {
 		glm::mat4 rotatey = glm::rotate(glm::mat4(1), glm::radians(rotation.y), glm::vec3(0, 1, 0));
 		glm::mat4 rotatez = glm::rotate(glm::mat4(1), glm::radians(rotation.z), glm::vec3(0, 0, 1));
 		glm::mat4 pendulumDist = glm::translate(glm::mat4(1), pendulumDistance);
-
 		objMat = translate * rotatex * rotatey * rotatez * scale * pendulumDist;
+		glm::mat4 outline = glm::scale(objMat, glm::vec3(1.1f, 1.1f, 1.1f));
 
 		glEnable(GL_PRIMITIVE_RESTART);
 		glBindVertexArray(cubeVao);
 		glUseProgram(cubeProgram);
+
 		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
 		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
 		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
@@ -809,16 +813,34 @@ namespace Cabina {
 		glm::mat4 rotatez = glm::rotate(glm::mat4(1), glm::radians(rotation.z), glm::vec3(0, 0, 1));
 
 		objMat = translate * rotatex * rotatey * rotatez * scale;
+		glm::mat4 outline = glm::scale(objMat, glm::vec3(1.01f, 1.01f, 1.01f));
 
 		glBindVertexArray(modelVao);
 		glUseProgram(modelProgram);
-		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
+		glEnable(GL_DEPTH_TEST);
+		glStencilMask(0xFF);
 		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
 		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
 		glUniform3f(glGetUniformLocation(modelProgram, "lPos"), lightPos.x, lightPos.y, lightPos.z);
-		glUniform4f(glGetUniformLocation(modelProgram, "color"), 0.5f, .5f, 1.f, 0.f);
-	
+		glUniform3f(glGetUniformLocation(modelProgram, "bulbPosition"), pendulumPosition.x, pendulumPosition.y, pendulumPosition.z);
+		glUniform3f(glGetUniformLocation(modelProgram, "bulbRotation"), pendulumRotation.x, pendulumRotation.y, pendulumRotation.z);
+		glUniform3f(glGetUniformLocation(modelProgram, "cameraP"), RV::panv[0], RV::panv[1], RV::panv[2]);
+		glUniform1f(glGetUniformLocation(modelProgram, "bulbPower"), intensityBulb);
+		glUniform1f(glGetUniformLocation(modelProgram, "moonPower"), intensityMoon );
+
+		glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+		glStencilMask(0xFF);
+		glEnable(GL_DEPTH_TEST);
+		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(outline));
+		glUniform4f(glGetUniformLocation(modelProgram, "color"), 1.f, 0.f, 0.f, 0.f);
 		glDrawArrays(GL_TRIANGLES, 0, nverts);
+		glDisable(GL_DEPTH_TEST);
+		glStencilMask(0xFF);
+		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
+		glUniform4f(glGetUniformLocation(modelProgram, "color"), 1.f, 1.f, 1.f, 0.f);
+		glDrawArrays(GL_TRIANGLES, 0, nverts);
+
+	
 
 		glUseProgram(0);
 		glBindVertexArray(0);
@@ -890,17 +912,34 @@ namespace Wheel {
 		glm::mat4 rotatez = glm::rotate(glm::mat4(1), rotation.z, glm::vec3(0, 0, 1));
 
 		objMat = translate * rotatex * rotatey * rotatez * scale;
+		glm::mat4 outline = glm::scale(objMat, glm::vec3(1.01f, 1.01f, 1.01f));
 
 		glBindVertexArray(modelVao);
 		glUseProgram(modelProgram);
-		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
+		glEnable(GL_DEPTH_TEST);
+		glStencilMask(0xFF);
+		glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
 		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
 		glUniform3f(glGetUniformLocation(modelProgram, "lPos"), lightPos.x, lightPos.y, lightPos.z);
-		glUniform4f(glGetUniformLocation(modelProgram, "color"), 0.5f, .5f, 1.f, 0.f);
+		glUniform3f(glGetUniformLocation(modelProgram, "bulbPosition"), pendulumPosition.x, pendulumPosition.y, pendulumPosition.z);
+		glUniform3f(glGetUniformLocation(modelProgram, "bulbRotation"), pendulumRotation.x, pendulumRotation.y, pendulumRotation.z);
+		glUniform3f(glGetUniformLocation(modelProgram, "cameraP"), RV::panv[0], RV::panv[1], RV::panv[2]);
+		glUniform1f(glGetUniformLocation(modelProgram, "bulbPower"), intensityBulb);
+		glUniform1f(glGetUniformLocation(modelProgram, "moonPower"), intensityMoon);
 
+		glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+		glStencilMask(0xFF);
+		glDisable(GL_DEPTH_TEST);
+		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(outline));
+		glUniform4f(glGetUniformLocation(modelProgram, "color"), 1.f, 0.f, 0.f, 0.f);
 		glDrawArrays(GL_TRIANGLES, 0, nverts);
-
+		glEnable(GL_DEPTH_TEST);
+		glStencilMask(0xFF);
+		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
+		glUniform4f(glGetUniformLocation(modelProgram, "color"), 1.f, 1.f, 1.f, 0.f);
+		glDrawArrays(GL_TRIANGLES, 0, nverts);
 
 		glUseProgram(0);
 		glBindVertexArray(0);
@@ -972,17 +1011,32 @@ namespace Legs {
 		glm::mat4 rotatez = glm::rotate(glm::mat4(1), rotation.z, glm::vec3(0, 0, 1));
 
 		objMat = translate * rotatex * rotatey * rotatez * scale;
+		glm::mat4 outline = glm::scale(objMat, glm::vec3(1.01f, 1.01f, 1.01f));
 
 		glBindVertexArray(modelVao);
 		glUseProgram(modelProgram);
-		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
+		glEnable(GL_DEPTH_TEST);
+		glStencilMask(0xFF);
 		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
 		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
 		glUniform3f(glGetUniformLocation(modelProgram, "lPos"), lightPos.x, lightPos.y, lightPos.z);
-		glUniform4f(glGetUniformLocation(modelProgram, "color"), 0.5f, .5f, 1.f, 0.f);
+		glUniform3f(glGetUniformLocation(modelProgram, "bulbPosition"), pendulumPosition.x, pendulumPosition.y, pendulumPosition.z);
+		glUniform3f(glGetUniformLocation(modelProgram, "bulbRotation"), pendulumRotation.x, pendulumRotation.y, pendulumRotation.z);
+		glUniform3f(glGetUniformLocation(modelProgram, "cameraP"), RV::panv[0], RV::panv[1], RV::panv[2]);
+		glUniform1f(glGetUniformLocation(modelProgram, "bulbPower"), intensityBulb);
+		glUniform1f(glGetUniformLocation(modelProgram, "moonPower"), intensityMoon);
 
+		glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+		glStencilMask(0xFF);
+		glDisable(GL_DEPTH_TEST);
+		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(outline));
+		glUniform4f(glGetUniformLocation(modelProgram, "color"), 1.f, 0.f, 0.f, 0.f);
 		glDrawArrays(GL_TRIANGLES, 0, nverts);
-
+		glEnable(GL_DEPTH_TEST);
+		glStencilMask(0xFF);
+		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
+		glUniform4f(glGetUniformLocation(modelProgram, "color"), 1.f, 1.f, 1.f, 0.f);
+		glDrawArrays(GL_TRIANGLES, 0, nverts);
 
 		glUseProgram(0);
 		glBindVertexArray(0);
@@ -1054,17 +1108,32 @@ namespace Trump {
 		glm::mat4 rotatez = glm::rotate(glm::mat4(1), glm::radians(rotation.z), glm::vec3(0, 0, 1));
 
 		objMat = translate * rotatex * rotatey * rotatez * scale;
+		glm::mat4 outline = glm::scale(objMat, glm::vec3(1.15f, 1.02f, 1.15f));
 
 		glBindVertexArray(modelVao);
 		glUseProgram(modelProgram);
-		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
+		glEnable(GL_DEPTH_TEST);
+		glStencilMask(0x00);
 		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
 		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
 		glUniform3f(glGetUniformLocation(modelProgram, "lPos"), lightPos.x, lightPos.y, lightPos.z);
-		glUniform4f(glGetUniformLocation(modelProgram, "color"), 0.5f, .5f, 1.f, 0.f);
+		glUniform3f(glGetUniformLocation(modelProgram, "bulbPosition"), pendulumPosition.x, pendulumPosition.y, pendulumPosition.z);
+		glUniform3f(glGetUniformLocation(modelProgram, "bulbRotation"), pendulumRotation.x, pendulumRotation.y, pendulumRotation.z);
+		glUniform3f(glGetUniformLocation(modelProgram, "cameraP"), RV::panv[0], RV::panv[1], RV::panv[2]);
+		glUniform1f(glGetUniformLocation(modelProgram, "bulbPower"), intensityBulb);
+		glUniform1f(glGetUniformLocation(modelProgram, "moonPower"), intensityMoon);
 
+		glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+		glStencilMask(0x00);
+		glDisable(GL_DEPTH_TEST);
+		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(outline));
+		glUniform4f(glGetUniformLocation(modelProgram, "color"), 1.f, 0.f, 0.f, 0.f);
 		glDrawArrays(GL_TRIANGLES, 0, nverts);
-
+		glEnable(GL_DEPTH_TEST);
+		glStencilMask(0xFF);
+		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
+		glUniform4f(glGetUniformLocation(modelProgram, "color"), 1.f, 1.f, 1.f, 0.f);
+		glDrawArrays(GL_TRIANGLES, 0, nverts);
 
 		glUseProgram(0);
 		glBindVertexArray(0);
@@ -1136,17 +1205,31 @@ namespace Chicken {
 		glm::mat4 rotatez = glm::rotate(glm::mat4(1), glm::radians(rotation.z), glm::vec3(0, 0, 1));
 
 		objMat = translate * rotatex * rotatey * rotatez * scale;
+		glm::mat4 outline = glm::scale(objMat, glm::vec3(1.15f, 1.02f, 1.15f));
 
 		glBindVertexArray(modelVao);
 		glUseProgram(modelProgram);
-		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
+		glEnable(GL_DEPTH_TEST);
+		glStencilMask(0xFF);
 		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
 		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
 		glUniform3f(glGetUniformLocation(modelProgram, "lPos"), lightPos.x, lightPos.y, lightPos.z);
-		glUniform4f(glGetUniformLocation(modelProgram, "color"), 0.5f, .5f, 1.f, 0.f);
-
+		glUniform3f(glGetUniformLocation(modelProgram, "bulbPosition"), pendulumPosition.x, pendulumPosition.y, pendulumPosition.z);
+		glUniform3f(glGetUniformLocation(modelProgram, "bulbRotation"), pendulumRotation.x, pendulumRotation.y, pendulumRotation.z);
+		glUniform3f(glGetUniformLocation(modelProgram, "cameraP"), RV::panv[0], RV::panv[1], RV::panv[2]);
+		glUniform1f(glGetUniformLocation(modelProgram, "bulbPower"), intensityBulb);
+		glUniform1f(glGetUniformLocation(modelProgram, "moonPower"), intensityMoon);
+		glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+		glStencilMask(0x00);
+		glDisable(GL_DEPTH_TEST);
+		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(outline));
+		glUniform4f(glGetUniformLocation(modelProgram, "color"), 1.f, 0.f, 0.f, 0.f);
 		glDrawArrays(GL_TRIANGLES, 0, nverts);
-
+		glEnable(GL_DEPTH_TEST);
+		glStencilMask(0xFF);
+		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
+		glUniform4f(glGetUniformLocation(modelProgram, "color"), 1.f, 1.f, 1.f, 0.f);
+		glDrawArrays(GL_TRIANGLES, 0, nverts);
 
 		glUseProgram(0);
 		glBindVertexArray(0);
@@ -1221,13 +1304,19 @@ namespace ChickenArmy {
 
 		glBindVertexArray(modelVao);
 		glUseProgram(modelProgram);
+		glEnable(GL_DEPTH_TEST);
+		glStencilMask(0xFF);
 		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
 		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
 		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
 		glUniform3f(glGetUniformLocation(modelProgram, "lPos"), lightPos.x, lightPos.y, lightPos.z);
+		glUniform3f(glGetUniformLocation(modelProgram, "bulbPosition"), pendulumPosition.x, pendulumPosition.y, pendulumPosition.z);
+		glUniform3f(glGetUniformLocation(modelProgram, "bulbRotation"), pendulumRotation.x, pendulumRotation.y, pendulumRotation.z);
 		glUniform1f(glGetUniformLocation(modelProgram, "chickenOffset"), chickenArmyOffset);
-		glUniform4f(glGetUniformLocation(modelProgram, "color"), 0.5f, .5f, 1.f, 0.f);
-
+		glUniform4f(glGetUniformLocation(modelProgram, "color"), 1.f, 1.f, 1.f, 0.f);
+		glUniform3f(glGetUniformLocation(modelProgram, "cameraP"), RV::panv[0], RV::panv[1], RV::panv[2]);
+		glUniform1f(glGetUniformLocation(modelProgram, "bulbPower"), intensityBulb);
+		glUniform1f(glGetUniformLocation(modelProgram, "moonPower"), intensityMoon);
 		
 
 		glDrawArraysInstanced(GL_TRIANGLES, 0, nverts, 10000);
@@ -1235,6 +1324,6 @@ namespace ChickenArmy {
 
 		glUseProgram(0);
 		glBindVertexArray(0);
-
+		glEnable(GL_DEPTH_TEST);
 	}
 }
